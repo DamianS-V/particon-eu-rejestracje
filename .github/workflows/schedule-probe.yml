@@ -1,0 +1,20 @@
+name: Test harmonogramu GitHub
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Pokaz czas i sposob uruchomienia
+        env:
+          TRIGGER_EVENT: ${{ github.event_name }}
+        run: |
+          date -u '+%Y-%m-%dT%H:%M:%SZ'
+          printf 'event=%s\n' "$TRIGGER_EVENT"
