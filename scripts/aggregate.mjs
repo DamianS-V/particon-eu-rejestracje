@@ -5,6 +5,7 @@
 export const SURVEY_IDS = ['887516', '798891', '634562', '968655'];
 
 export const EVENTS = [
+  { key: '2026-11-03T17:00|EN', label: '3 November, 17:00', language: 'EN', date: '2026-11-03' },
   { key: '2026-11-10T19:00|PL', label: '10 listopada, 19:00', language: 'PL', date: '2026-11-10' },
   { key: '2026-11-10T18:00|EN', label: '10 November, 18:00', language: 'EN', date: '2026-11-10' },
   { key: '2026-11-12T16:30|PL', label: '12 listopada, 16:30', language: 'PL', date: '2026-11-12' },
@@ -17,6 +18,8 @@ export const EVENT_MAP = {
   '887516|NOV10': '2026-11-10T19:00|PL',
   '798891|NOV10': '2026-11-10T19:00|PL',
   '887516|NOV12': '2026-11-12T16:30|PL',
+  '634562|NOV3': '2026-11-03T17:00|EN',
+  '634562|NOV03': '2026-11-03T17:00|EN',
   '634562|NOV10': '2026-11-10T18:00|EN',
   '968655|NO17': '2026-11-17T19:00|PL',
   '968655|NO19': '2026-11-19T16:30|PL'

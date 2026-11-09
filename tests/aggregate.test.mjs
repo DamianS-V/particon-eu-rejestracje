@@ -40,6 +40,18 @@ test('odmawia publikacji nieznanego terminu (nie gubi rejestracji po cichu)', ()
   assert.throws(() => aggregate(payload, new Date('2026-11-09T14:00:00Z')), /Nieznany termin/);
 });
 
+test('uwzględnia wcześniejszy termin z formularza anglojęzycznego', () => {
+  const payload = allEmpty();
+  payload['634562'] = { responses: [
+    record('1', 'ada@example.org', 'NOV03', '2026-11-02 09:00:00'),
+    record('2', 'ada@example.org', 'NOV10', '2026-11-09 09:00:00')
+  ] };
+  const result = aggregate(payload, new Date('2026-11-09T14:00:00Z'));
+  assert.equal(result.metrics.uniquePersons, 1);
+  assert.equal(result.events.find(e => e.key === '2026-11-03T17:00|EN').registered, 1);
+  assert.equal(result.events.find(e => e.key === '2026-11-10T18:00|EN').registered, 1);
+});
+
 test('szyfrowanie AES-256-GCM odszyfrowuje się tylko prawidłowym kluczem', () => {
   const key = randomBytes(32);
   const summary = { metrics: { uniquePersons: 2 }, label: 'test' };
