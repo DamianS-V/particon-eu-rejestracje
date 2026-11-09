@@ -1,11 +1,10 @@
 name: Aktualizuj dashboard PARTICON-EU
 
-on:
-  workflow_dispatch:
+on:  
   schedule:
     # UTC; four updates per hour. GitHub can delay scheduled jobs.
     - cron: '3,18,33,48 * * * *'
-
+  workflow_dispatch:
 permissions:
   contents: read
   pages: write
