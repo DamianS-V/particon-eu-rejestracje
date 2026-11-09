@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # UTC; four updates per hour. GitHub can delay scheduled jobs.
-    - cron: '7,22,37,52 * * * *'
+    - cron: '3,18,33,48 * * * *'
 
 permissions:
   contents: read
