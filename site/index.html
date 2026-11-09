@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content="Wewnętrzny dashboard postępu rejestracji na seminaria PARTICON-EU" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>PARTICON-EU · Rejestracje na seminaria</title>
+  </head>
+  <body>
+    <div class="topline" aria-hidden="true"></div>
+    <div class="page-shell">
+      <header class="header">
+        <div class="brand"><span class="brand-mark">P<span>·</span>EU</span><span class="brand-caption">PARTICON-EU<br /><small>MONITORING REJESTRACJI</small></span></div>
+        <div class="header-meta"><span class="live-dot"></span> Aktualizacja automatyczna <span class="vertical-divider"></span> Panel zespołu</div>
+      </header>
+
+      <main>
+        <section class="intro">
+          <div class="eyebrow">SEMINARIA · LISTOPAD 2026</div>
+          <h1>Postępy rejestracji</h1>
+          <p>Wspólny obraz zgłoszeń na seminaria PARTICON-EU: postęp do celu, tempo zapisów i skuteczność kanałów promocji.</p>
+        </section>
+
+        <section id="locked" class="locked card" aria-labelledby="locked-title">
+          <div class="lock-icon" aria-hidden="true">✦</div>
+          <h2 id="locked-title">Panel chroniony kluczem</h2>
+          <p>Otwórz link przekazany przez organizatora. Sam adres strony bez klucza nie udostępnia statystyk.</p>
+          <form id="key-form" class="key-form">
+            <label for="key-input">Klucz dostępu</label>
+            <div class="key-input-row"><input id="key-input" type="password" spellcheck="false" autocomplete="off" placeholder="Wklej klucz z linku" required /><button type="submit">Otwórz panel</button></div>
+          </form>
+          <p id="locked-message" class="notice" role="status"></p>
+        </section>
+
+        <section id="dashboard" hidden>
+          <div class="toolbar"><div class="updated"><span class="live-dot"></span><span id="updated">Oczekiwanie na dane</span></div><button id="copy-link" class="text-button" type="button">Kopiuj link z dostępem ↗</button></div>
+
+          <div class="kpi-grid">
+            <article class="card kpi kpi-feature"><div class="kpi-label">Unikalne osoby</div><div class="kpi-number"><span id="unique">—</span><span class="kpi-of">/ 300</span></div><div class="progress-track"><div id="goal-progress" class="progress-fill"></div></div><p id="goal-description" class="kpi-caption">Postęp do celu projektu</p></article>
+            <article class="card kpi"><div class="kpi-label">Wszystkie zgłoszenia</div><div class="kpi-number" id="total">—</div><p class="kpi-caption">Wszystkie ukończone formularze</p></article>
+            <article class="card kpi"><div class="kpi-label">Zgłoszenia w 7 dni</div><div class="kpi-number" id="last7">—</div><p class="kpi-caption">Ostatnie siedem dni kalendarzowych</p></article>
+            <article class="card kpi"><div class="kpi-label">Ponowne rejestracje</div><div class="kpi-number" id="duplicates">—</div><p class="kpi-caption">Zgłoszenia ponad liczbę unikalnych e-maili</p></article>
+          </div>
+
+          <div class="section-top"><div><div class="eyebrow">01 / TEMPO</div><h2>Dynamika rejestracji</h2></div><div class="small-stat">Dzisiaj: <strong id="today">—</strong></div></div>
+          <section class="card chart-card" aria-label="Wykres rejestracji z ostatnich 30 dni"><div class="chart-top"><div class="legend"><span><i class="swatch swatch-one"></i> Nowe osoby</span><span><i class="swatch swatch-two"></i> Zgłoszenia</span></div><span class="muted">Ostatnie 30 dni</span></div><div id="trend" class="trend" role="img" aria-label="Wykres liczby nowych osób i wszystkich zgłoszeń dziennie"></div></section>
+
+          <div class="section-top"><div><div class="eyebrow">02 / TERMINY</div><h2>Seminaria</h2></div></div>
+          <section class="card events-card"><div class="events-head"><span>Termin</span><span>Język</span><span>Zarejestrowane osoby</span></div><div id="events" class="events-list"></div><p class="footnote">Jedna osoba jest liczona tylko raz w ramach danego seminarium, nawet jeśli zgłosiła się ponownie.</p></section>
+
+          <div class="section-top"><div><div class="eyebrow">03 / PROMOCJA</div><h2>Skuteczność kanałów</h2></div><label class="select-label" for="promo-mode">Perspektywa <select id="promo-mode"><option value="first">Skąd dowiedzieli się o seminarium</option><option value="decide">Co skłoniło do rejestracji</option><option value="other">Pozostałe wskazane kanały</option></select></label></div>
+          <section class="card bars-card"><p class="section-note">Statystyki liczone dla unikalnych osób, na podstawie ich pierwszego zgłoszenia.</p><div id="channels" class="bars"></div></section>
+
+          <div class="lower-grid"><div><div class="section-top"><div><div class="eyebrow">04 / UCZESTNICY</div><h2>Struktura uczestników</h2></div></div><section class="card bars-card"><div id="roles" class="bars bars-small"></div></section></div><div><div class="section-top"><div><div class="eyebrow">05 / PODSUMOWANIE</div><h2>Interpretacja wskaźników</h2></div></div><section class="card definition-card"><div><strong>Unikalne osoby</strong><p>Odrębne adresy e-mail po usunięciu spacji i ujednoliceniu wielkości liter, wspólnie dla czterech formularzy.</p></div><div><strong>Wszystkie zgłoszenia</strong><p>Liczba ukończonych formularzy; jedna osoba może zarejestrować się więcej niż raz.</p></div><div><strong>Wyniki promocji</strong><p>Odpowiedzi z pierwszego zgłoszenia każdej osoby, żeby nie zawyżać udziału kanałów.</p></div></section></div></div>
+        </section>
+      </main>
+
+      <footer><span>PARTICON-EU / Social Embeddedness of Constitutions</span><span>Wewnętrzny monitoring · tylko agregaty statystyczne</span></footer>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

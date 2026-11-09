@@ -1,0 +1,53 @@
+name: Aktualizuj dashboard PARTICON-EU
+
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC; four updates per hour. GitHub can delay scheduled jobs.
+    - cron: '7,22,37,52 * * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: particon-dashboard-publish
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Pobierz kod
+        uses: actions/checkout@v4
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Testy
+        run: npm test
+
+      - name: Pobierz, zagreguj i zaszyfruj wyniki
+        run: npm run sync
+        env:
+          LIMESURVEY_USERNAME: ${{ secrets.LIMESURVEY_USERNAME }}
+          LIMESURVEY_PASSWORD: ${{ secrets.LIMESURVEY_PASSWORD }}
+          DASHBOARD_ENCRYPTION_KEY: ${{ secrets.DASHBOARD_ENCRYPTION_KEY }}
+
+      - name: Konfiguracja GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Przygotowanie zaszyfrowanej strony
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+      - name: Publikacja dashboardu
+        id: deployment
+        uses: actions/deploy-pages@v4

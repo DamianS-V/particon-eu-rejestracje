@@ -1,0 +1,11 @@
+{
+  "name": "particon-eu-registration-dashboard",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test",
+    "sync": "node scripts/sync.mjs",
+    "generate-key": "node -e \"console.log(require('node:crypto').randomBytes(32).toString('base64url'))\""
+  }
+}
