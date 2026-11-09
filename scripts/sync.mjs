@@ -1,6 +1,6 @@
 import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { aggregate, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS } from './aggregate.mjs';
+import { aggregate, confirmedHistoricalLabel, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS } from './aggregate.mjs';
 import { decodeKey, seal } from './crypto.mjs';
 
 const ENDPOINT = 'https://particon-eu.limesurvey.net/admin/remotecontrol';
@@ -80,7 +80,7 @@ async function registrationsWithLabels(sessionKey, sid, archived) {
     const sameTerm = plTerm && plTerm === eventFromLabel(en);
     const liveLabel = labelsByLanguage[language]?.get(id) ?? (sameTerm ? pl : '');
     const archivedLabel = Object.hasOwn(archived, id) ? archived[id] : null;
-    return { ...row, CONFIRM: archivedLabel ?? liveLabel };
+    return { ...row, CONFIRM: archivedLabel ?? confirmedHistoricalLabel(sid, row) ?? liveLabel };
   });
   return { responses };
 }

@@ -47,6 +47,14 @@ export function field(row, name) {
   return '';
 }
 
+export function confirmedHistoricalLabel(sid, row) {
+  if (sid !== '634562' || field(row, 'CONFIRM') !== 'NOV03') return null;
+  const submitted = field(row, 'submitdate');
+  const localTimestamp = /^\d{4}-\d{2}-\d{2}[ T](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$/;
+  if (!localTimestamp.test(submitted) || submitted.slice(0, 16).replace(' ', 'T') >= '2026-11-03T17:00') return null;
+  return '3 November 2026, 17:00–18:30 CET';
+}
+
 export function parseLimeSurveyJson(json, sid) {
   const payload = typeof json === 'string' ? JSON.parse(json.replace(/^\uFEFF/, '')) : json;
   const set = Array.isArray(payload) ? payload : payload?.responses;

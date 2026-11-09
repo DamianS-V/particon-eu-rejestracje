@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { SURVEY_IDS, parseLimeSurveyJson, aggregate } from '../scripts/aggregate.mjs';
+import { SURVEY_IDS, parseLimeSurveyJson, aggregate, confirmedHistoricalLabel, eventFromLabel } from '../scripts/aggregate.mjs';
 import { seal, unseal } from '../scripts/crypto.mjs';
 
 function allEmpty() { return Object.fromEntries(SURVEY_IDS.map(sid => [sid, { responses: [] }])); }
@@ -58,6 +58,14 @@ test('uwzględnia wcześniejszy termin z formularza anglojęzycznego', () => {
   assert.equal(result.metrics.uniquePersons, 1);
   assert.equal(result.events.find(e => e.key === '2026-11-03T17:00|EN').registered, 1);
   assert.equal(result.events.find(e => e.key === '2026-11-10T18:00|EN').registered, 1);
+});
+
+test('odtwarza potwierdzoną etykietę NOV03 tylko przed rozpoczęciem pierwszego seminarium', () => {
+  const row = { CONFIRM: 'NOV03', submitdate: '2026-11-03 16:59:59' };
+  assert.equal(eventFromLabel(confirmedHistoricalLabel('634562', row)), '2026-11-03T17:00|EN');
+  assert.equal(confirmedHistoricalLabel('634562', { ...row, submitdate: '2026-11-03 17:00:00' }), null);
+  assert.equal(confirmedHistoricalLabel('634562', { ...row, CONFIRM: 'NOV10' }), null);
+  assert.equal(confirmedHistoricalLabel('968655', row), null);
 });
 
 test('szyfrowanie AES-256-GCM odszyfrowuje się tylko prawidłowym kluczem', () => {
