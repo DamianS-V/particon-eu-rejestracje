@@ -13,19 +13,6 @@ export const EVENTS = [
   { key: '2026-11-19T16:30|PL', label: '19 listopada, 16:30', language: 'PL', date: '2026-11-19' }
 ];
 
-// Historical registrations for the same seminar can come from several forms.
-export const EVENT_MAP = {
-  '887516|NOV10': '2026-11-10T19:00|PL',
-  '798891|NOV10': '2026-11-10T19:00|PL',
-  '887516|NOV12': '2026-11-12T16:30|PL',
-  '634562|NOV3': '2026-11-03T17:00|EN',
-  '634562|NOV03': '2026-11-03T17:00|EN',
-  '634562|NOV10': '2026-11-10T18:00|EN',
-  '968655|NOV10': '2026-11-10T19:00|PL',
-  '968655|NO17': '2026-11-17T19:00|PL',
-  '968655|NO19': '2026-11-19T16:30|PL'
-};
-
 export const CHANNEL_NAMES = {
   FB: 'Facebook', IG: 'Instagram', LI: 'LinkedIn', SOC: 'Media społecznościowe (inne)',
   PROJ: 'Kanały projektu', WEB: 'Strona WWW', EMAIL: 'Wiadomość e-mail',
@@ -41,6 +28,15 @@ export const ROLE_NAMES = {
 
 const clean = value => value === null || value === undefined ? '' : String(value).trim();
 const normalizeKey = key => key.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+export function eventFromLabel(label) {
+  const text = clean(label).replace(/<[^>]*>|&nbsp;|&#160;/gi, ' ').trim();
+  const match = /^(\d{1,2})(?:\s*\.\s*11\s*\.\s*|\s+(?:listopada|november)\s+)(\d{4})\s*,?\s*(?:godz\.?\s*)?(\d{1,2}:[0-5]\d)\b/i.exec(text);
+  if (!match) return null;
+  const [, day, year, start] = match;
+  const prefix = `${year}-11-${day.padStart(2, '0')}T${start.padStart(5, '0')}|`;
+  return EVENTS.find(event => event.key.startsWith(prefix))?.key ?? null;
+}
 
 export function field(row, name) {
   if (Object.hasOwn(row, name)) return clean(row[name]);
@@ -73,9 +69,7 @@ export function normalizeRegistration(sid, row) {
   if (!id || !/^\S+@\S+\.\S+$/.test(email)) throw new Error(`Ukończona odpowiedź ${sid} ma nieprawidłowe id/e-mail`);
   const submittedDay = submitted.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(submittedDay)) throw new Error(`Nieprawidłowa data odpowiedzi ${sid}`);
-  const code = field(row, 'CONFIRM');
-  const event = EVENT_MAP[`${sid}|${code}`];
-  if (!event) throw new Error(`Nieznany termin w ankiecie ${sid}. Sprawdź EVENT_MAP.`);
+  const event = eventFromLabel(field(row, 'CONFIRM'));
   const other = [];
   for (const channel of Object.keys(CHANNEL_NAMES)) {
     const flag = field(row, `SOURCEOTHER[${channel}]`) || field(row, `SOURCEOTHER_${channel}`);
@@ -121,11 +115,16 @@ export function aggregate(exportsBySurvey, now = new Date()) {
   const firstByEmail = new Map();
   const perEvent = new Map(EVENTS.map(e => [e.key, { emails: new Set(), submissions: 0 }]));
   const bySubmissionDate = new Map();
+  let unassignedRegistrations = 0;
   for (const row of rows) {
     if (!firstByEmail.has(row.email)) firstByEmail.set(row.email, row);
-    const event = perEvent.get(row.event);
-    event.submissions++;
-    event.emails.add(row.email);
+    if (row.event) {
+      const event = perEvent.get(row.event);
+      event.submissions++;
+      event.emails.add(row.email);
+    } else {
+      unassignedRegistrations++;
+    }
     bySubmissionDate.set(row.submittedDay, (bySubmissionDate.get(row.submittedDay) || 0) + 1);
   }
 
@@ -157,6 +156,7 @@ export function aggregate(exportsBySurvey, now = new Date()) {
     metrics: {
       uniquePersons: firstByEmail.size,
       registrations: rows.length,
+      unassignedRegistrations,
       duplicateRegistrations: rows.length - firstByEmail.size,
       todayRegistrations: bySubmissionDate.get(today) || 0,
       last7Registrations: rows.filter(row => row.submittedDay >= last7 && row.submittedDay <= today).length,

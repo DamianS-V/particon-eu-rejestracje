@@ -1,9 +1,16 @@
 import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { aggregate, SURVEY_IDS } from './aggregate.mjs';
+import { aggregate, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS } from './aggregate.mjs';
 import { decodeKey, seal } from './crypto.mjs';
 
 const ENDPOINT = 'https://particon-eu.limesurvey.net/admin/remotecontrol';
+// The export API selects columns by their LimeSurvey field identifiers.
+const CONFIRM_FIELDS = {
+  '887516': '887516X324X3231',
+  '798891': '798891X342X3426',
+  '634562': '634562X58X879',
+  '968655': '968655X330X3296'
+};
 
 function mandatory(name) {
   const value = process.env[name];
@@ -26,8 +33,10 @@ async function rpc(method, params) {
   return json.result;
 }
 
-async function exportSurvey(sessionKey, sid) {
-  const result = await rpc('export_responses', [sessionKey, Number(sid), 'json', null, 'complete', 'code', 'short']);
+async function exportSurvey(sessionKey, sid, language = null) {
+  const params = [sessionKey, Number(sid), 'json', language, 'complete', 'code', language ? 'long' : 'short'];
+  if (language) params.push(null, null, ['id', CONFIRM_FIELDS[sid]]);
+  const result = await rpc('export_responses', params);
   if (typeof result === 'object' && result !== null) {
     if (result.error_code === 'ERR_NO_DATA' || /^no data$/i.test(result.status || '')) {
       return { responses: [] };
@@ -40,10 +49,55 @@ async function exportSurvey(sessionKey, sid) {
   catch { throw new Error(`Eksport JSON ankiety ${sid} jest nieprawidłowy`); }
 }
 
+function archivedLabels() {
+  const source = process.env.LIMESURVEY_ARCHIVED_LABELS;
+  if (!source) return {};
+  try {
+    const labels = JSON.parse(source);
+    if (!labels || typeof labels !== 'object' || Array.isArray(labels)) throw new Error();
+    for (const [sid, entries] of Object.entries(labels)) {
+      if (!SURVEY_IDS.includes(sid) || !entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error();
+      for (const [id, label] of Object.entries(entries)) {
+        if (!/^\d+$/.test(id) || typeof label !== 'string' || !eventFromLabel(label)) throw new Error();
+      }
+    }
+    return labels;
+  } catch {
+    throw new Error('LIMESURVEY_ARCHIVED_LABELS zawiera nieprawidłowe identyfikatory lub etykiety terminów.');
+  }
+}
+
+async function registrationsWithLabels(sessionKey, sid, archived) {
+  const records = parseLimeSurveyJson(await exportSurvey(sessionKey, sid), sid);
+  if (!records.some(row => field(row, 'submitdate'))) return { responses: records };
+  const labelsByLanguage = Object.create(null);
+  for (const language of ['pl', 'en']) {
+    const rows = parseLimeSurveyJson(await exportSurvey(sessionKey, sid, language), sid);
+    if (!rows.some(row => Object.hasOwn(row, 'CONFIRM'))) {
+      throw new Error(`Eksport pełnych odpowiedzi ankiety ${sid} nie zawiera pola CONFIRM (${language}).`);
+    }
+    labelsByLanguage[language] = new Map(rows.map(row => [field(row, 'id'), field(row, 'CONFIRM')]));
+  }
+
+  const responses = records.map(row => {
+    const id = field(row, 'id');
+    const language = field(row, 'startlanguage').toLowerCase();
+    const pl = labelsByLanguage.pl.get(id);
+    const en = labelsByLanguage.en.get(id);
+    const plTerm = eventFromLabel(pl);
+    const sameTerm = plTerm && plTerm === eventFromLabel(en);
+    const liveLabel = labelsByLanguage[language]?.get(id) ?? (sameTerm ? pl : '');
+    const archivedLabel = Object.hasOwn(archived, id) ? archived[id] : null;
+    return { ...row, CONFIRM: archivedLabel ?? liveLabel };
+  });
+  return { responses };
+}
+
 async function main() {
   const username = mandatory('LIMESURVEY_USERNAME');
   const password = mandatory('LIMESURVEY_PASSWORD');
   const key = decodeKey(mandatory('DASHBOARD_ENCRYPTION_KEY'));
+  const archive = archivedLabels();
   const sessionResult = await rpc('get_session_key', [username, password]);
   if (typeof sessionResult !== 'string' || !sessionResult) {
     throw new Error('Logowanie do LimeSurvey API nie powiodło się. Sprawdź nazwę użytkownika i hasło.');
@@ -51,7 +105,7 @@ async function main() {
   let exportsBySurvey;
   try {
     exportsBySurvey = {};
-    for (const sid of SURVEY_IDS) exportsBySurvey[sid] = await exportSurvey(sessionResult, sid);
+    for (const sid of SURVEY_IDS) exportsBySurvey[sid] = await registrationsWithLabels(sessionResult, sid, archive[sid] ?? {});
   } finally {
     try { await rpc('release_session_key', [sessionResult]); } catch { /* best effort */ }
   }

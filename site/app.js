@@ -66,6 +66,10 @@ function renderTrend(data) {
 
 function renderEvents(data) {
   $('events').innerHTML = data.events.map(e => `<div class="event-row"><div class="event-name">${escapeHtml(e.label)}</div><div><span class="event-language">${escapeHtml(e.language)}</span></div><div class="event-count">${format(e.registered)}</div></div>`).join('');
+  const unassigned = data.metrics.unassignedRegistrations ?? 0;
+  const notice = $('unassigned-events');
+  notice.hidden = unassigned === 0;
+  notice.textContent = `Zgłoszenia bez ustalonego terminu (${format(unassigned)}) wliczono do łącznych statystyk.`;
 }
 
 function bars(rows, key, target) {
