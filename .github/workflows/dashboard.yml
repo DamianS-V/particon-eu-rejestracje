@@ -40,6 +40,7 @@ jobs:
           LIMESURVEY_PASSWORD: ${{ secrets.LIMESURVEY_PASSWORD }}
           DASHBOARD_ENCRYPTION_KEY: ${{ secrets.DASHBOARD_ENCRYPTION_KEY }}
           LIMESURVEY_ARCHIVED_LABELS: ${{ secrets.LIMESURVEY_ARCHIVED_LABELS }}
+          LIMESURVEY_EXCLUDED_RESPONSES: ${{ secrets.LIMESURVEY_EXCLUDED_RESPONSES }}
 
       - name: Konfiguracja GitHub Pages
         uses: actions/configure-pages@v5

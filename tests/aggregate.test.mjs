@@ -68,6 +68,17 @@ test('odtwarza potwierdzoną etykietę NOV03 tylko przed rozpoczęciem pierwszeg
   assert.equal(confirmedHistoricalLabel('968655', row), null);
 });
 
+test('pomija wpis próbny tylko w formularzu wskazanym w wykluczeniu', () => {
+  const payload = allEmpty();
+  payload['968655'] = { responses: [record('2', 'test@example.org', 'NOV10', '2026-11-06 11:05:28')] };
+  payload['634562'] = { responses: [record('2', 'ada@example.org', '3 November 2026, 17:00–18:30 CET', '2026-11-03 15:57:07')] };
+  const result = aggregate(payload, new Date('2026-11-09T14:00:00Z'), new Set(['968655|2']));
+  assert.equal(result.metrics.registrations, 1);
+  assert.equal(result.metrics.uniquePersons, 1);
+  assert.equal(result.metrics.unassignedRegistrations, 0);
+  assert.equal(result.events.find(event => event.key === '2026-11-03T17:00|EN').registered, 1);
+});
+
 test('szyfrowanie AES-256-GCM odszyfrowuje się tylko prawidłowym kluczem', () => {
   const key = randomBytes(32);
   const summary = { metrics: { uniquePersons: 2 }, label: 'test' };

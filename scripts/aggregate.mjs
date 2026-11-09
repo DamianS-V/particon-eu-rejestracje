@@ -103,16 +103,17 @@ function tally(obj, key) {
   if (key && Object.hasOwn(obj, key)) obj[key]++;
 }
 
-export function aggregate(exportsBySurvey, now = new Date()) {
+export function aggregate(exportsBySurvey, now = new Date(), excludedResponseKeys = new Set()) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
   const rows = [];
   const seenResponseKeys = new Set();
   for (const sid of SURVEY_IDS) {
     if (!Object.hasOwn(exportsBySurvey, sid)) throw new Error(`Brak eksportu ankiety ${sid}`);
     for (const raw of parseLimeSurveyJson(exportsBySurvey[sid], sid)) {
+      const responseKey = `${sid}|${field(raw, 'id')}`;
+      if (excludedResponseKeys.has(responseKey)) continue;
       const record = normalizeRegistration(sid, raw);
       if (!record) continue;
-      const responseKey = `${sid}|${record.id}`;
       if (seenResponseKeys.has(responseKey)) throw new Error(`Duplikat odpowiedzi w ankiecie ${sid}`);
       seenResponseKeys.add(responseKey);
       rows.push(record);

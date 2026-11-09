@@ -90,6 +90,10 @@ async function main() {
   const password = mandatory('LIMESURVEY_PASSWORD');
   const key = decodeKey(mandatory('DASHBOARD_ENCRYPTION_KEY'));
   const archive = archivedLabels();
+  const excludedResponseKeys = (process.env.LIMESURVEY_EXCLUDED_RESPONSES ?? '').split(',').map(entry => entry.trim()).filter(Boolean);
+  if (excludedResponseKeys.some(entry => !/^\d+\|\d+$/.test(entry))) {
+    throw new Error('LIMESURVEY_EXCLUDED_RESPONSES wymaga par ID formularza|ID odpowiedzi.');
+  }
   const sessionResult = await rpc('get_session_key', [username, password]);
   if (typeof sessionResult !== 'string' || !sessionResult) {
     throw new Error('Logowanie do LimeSurvey API nie powiodło się. Sprawdź nazwę użytkownika i hasło.');
@@ -102,7 +106,7 @@ async function main() {
     try { await rpc('release_session_key', [sessionResult]); } catch { /* best effort */ }
   }
 
-  const summary = aggregate(exportsBySurvey);
+  const summary = aggregate(exportsBySurvey, new Date(), new Set(excludedResponseKeys));
   const envelope = seal(summary, key);
   await mkdir('dist', { recursive: true });
   for (const filename of ['index.html', 'styles.css', 'app.js']) {
