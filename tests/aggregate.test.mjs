@@ -18,13 +18,16 @@ test('deduplikuje osoby między ankietami, ale zachowuje daty i seminaria', () =
     record('2', 'bea@example.org', 'NOV12', '2026-11-09 09:00:00', { SOURCEFIRST: 'LI', ROLE: 'UNI' })
   ] };
   payload['798891'] = { responses: [record('3', 'ada@example.org', 'NOV10', '2026-11-09 10:00:00', { SOURCEFIRST: 'IG' })] };
-  payload['968655'] = { responses: [record('4', 'ADA@EXAMPLE.ORG', 'NO17', '2026-11-10 12:00:00')] };
+  payload['968655'] = { responses: [
+    record('4', 'ADA@EXAMPLE.ORG', 'NO17', '2026-11-10 12:00:00'),
+    record('5', 'ada@example.org', 'NOV10', '2026-11-09 11:00:00')
+  ] };
   const result = aggregate(payload, new Date('2026-11-10T14:00:00.000Z'));
   assert.equal(result.metrics.uniquePersons, 2);
-  assert.equal(result.metrics.registrations, 4);
-  assert.equal(result.metrics.duplicateRegistrations, 2);
+  assert.equal(result.metrics.registrations, 5);
+  assert.equal(result.metrics.duplicateRegistrations, 3);
   assert.equal(result.events.find(e => e.key === '2026-11-10T19:00|PL').registered, 1);
-  assert.equal(result.events.find(e => e.key === '2026-11-10T19:00|PL').submissions, 2);
+  assert.equal(result.events.find(e => e.key === '2026-11-10T19:00|PL').submissions, 3);
   assert.equal(result.events.find(e => e.key === '2026-11-17T19:00|PL').registered, 1);
   assert.equal(result.channels.find(c => c.code === 'FB').first, 1);
   assert.equal(result.channels.find(c => c.code === 'IG').first, 0);

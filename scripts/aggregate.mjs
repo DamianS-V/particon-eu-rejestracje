@@ -13,7 +13,7 @@ export const EVENTS = [
   { key: '2026-11-19T16:30|PL', label: '19 listopada, 16:30', language: 'PL', date: '2026-11-19' }
 ];
 
-// Two Polish registration forms point to the same 10 November seminar.
+// Historical registrations for the same seminar can come from several forms.
 export const EVENT_MAP = {
   '887516|NOV10': '2026-11-10T19:00|PL',
   '798891|NOV10': '2026-11-10T19:00|PL',
@@ -21,6 +21,7 @@ export const EVENT_MAP = {
   '634562|NOV3': '2026-11-03T17:00|EN',
   '634562|NOV03': '2026-11-03T17:00|EN',
   '634562|NOV10': '2026-11-10T18:00|EN',
+  '968655|NOV10': '2026-11-10T19:00|PL',
   '968655|NO17': '2026-11-17T19:00|PL',
   '968655|NO19': '2026-11-19T16:30|PL'
 };
