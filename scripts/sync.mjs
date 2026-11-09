@@ -4,13 +4,6 @@ import { aggregate, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS } fro
 import { decodeKey, seal } from './crypto.mjs';
 
 const ENDPOINT = 'https://particon-eu.limesurvey.net/admin/remotecontrol';
-// The export API selects columns by their LimeSurvey field identifiers.
-const CONFIRM_FIELDS = {
-  '887516': '887516X324X3231',
-  '798891': '798891X342X3426',
-  '634562': '634562X58X879',
-  '968655': '968655X330X3296'
-};
 
 function mandatory(name) {
   const value = process.env[name];
@@ -35,7 +28,6 @@ async function rpc(method, params) {
 
 async function exportSurvey(sessionKey, sid, language = null) {
   const params = [sessionKey, Number(sid), 'json', language, 'complete', 'code', language ? 'long' : 'short'];
-  if (language) params.push(null, null, ['id', CONFIRM_FIELDS[sid]]);
   const result = await rpc('export_responses', params);
   if (typeof result === 'object' && result !== null) {
     if (result.error_code === 'ERR_NO_DATA' || /^no data$/i.test(result.status || '')) {
