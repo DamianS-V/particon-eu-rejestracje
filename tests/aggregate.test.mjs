@@ -79,6 +79,43 @@ test('pomija wpis próbny tylko w formularzu wskazanym w wykluczeniu', () => {
   assert.equal(result.events.find(event => event.key === '2026-11-03T17:00|EN').registered, 1);
 });
 
+test('dodaje nowe terminy z treści, niezależnie od kodów i języka interfejsu', () => {
+  const payload = allEmpty();
+  payload['634562'] = { responses: [
+    record('101', 'a@example.org', '17 November 2026, 18:00–19:00 CET', '2026-11-16 12:00:00'),
+    record('102', 'a@example.org', '17.11.2026, godz. 18:00–19:00 CET', '2026-11-16 13:00:00'),
+    record('103', 'b@example.org', '2 December 2026, 9:05–10:00 CET', '2026-11-16 14:00:00'),
+    record('104', 'c@example.org', '17 November 2026, 19:00–20:00 CET', '2026-11-16 15:00:00')
+  ] };
+  const result = aggregate(payload, new Date('2026-11-17T12:00:00Z'));
+  const event = result.events.find(e => e.key === '2026-11-17T18:00|EN');
+  assert.equal(event.registered, 1);
+  assert.equal(event.submissions, 2);
+  assert.equal(result.events.find(e => e.key === '2026-12-02T09:05|EN').registered, 1);
+  assert.equal(result.events.find(e => e.key === '2026-11-17T19:00|EN').registered, 1);
+  assert.equal(result.events.find(e => e.key === '2026-11-17T19:00|PL').registered, 0);
+  assert.equal(result.metrics.unassignedRegistrations, 0);
+  assert.deepEqual(result.events.map(e => e.key), result.events.map(e => e.key).sort());
+});
+
+test('odrzuca nieprawidłowe daty, godziny i same kody', () => {
+  for (const label of ['31 November 2026, 18:00', '29 February 2027, 18:00', '17 November 2026, 24:00', '17.13.2026, 18:00', 'NOV17', '17 November 2026']) {
+    assert.equal(eventFromLabel(label, 'EN'), null, label);
+  }
+  assert.equal(eventFromLabel('29 February 2028, 18:00', 'EN'), '2028-02-29T18:00|EN');
+  assert.equal(eventFromLabel('2 grudnia 2026, godz. 9:05', 'PL'), '2026-12-02T09:05|PL');
+});
+
+test('wykluczone i nieukończone odpowiedzi nie tworzą nowych wydarzeń', () => {
+  const payload = allEmpty();
+  payload['968655'] = { responses: [
+    record('2', 'test@example.org', '2 December 2026, 18:00', '2026-11-16 12:00:00'),
+    record('3', 'a@example.org', '3 December 2026, 18:00', '')
+  ] };
+  const result = aggregate(payload, new Date('2026-11-17T12:00:00Z'), new Set(['968655|2']));
+  assert.ok(result.events.every(e => e.date < '2026-12-01'));
+});
+
 test('szyfrowanie AES-256-GCM odszyfrowuje się tylko prawidłowym kluczem', () => {
   const key = randomBytes(32);
   const summary = { metrics: { uniquePersons: 2 }, label: 'test' };

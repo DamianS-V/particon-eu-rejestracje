@@ -1,6 +1,6 @@
 import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { aggregate, confirmedHistoricalLabel, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS } from './aggregate.mjs';
+import { aggregate, confirmedHistoricalLabel, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS, SURVEY_LANGUAGES } from './aggregate.mjs';
 import { decodeKey, seal } from './crypto.mjs';
 
 const ENDPOINT = 'https://particon-eu.limesurvey.net/admin/remotecontrol';
@@ -50,7 +50,7 @@ function archivedLabels() {
     for (const [sid, entries] of Object.entries(labels)) {
       if (!SURVEY_IDS.includes(sid) || !entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error();
       for (const [id, label] of Object.entries(entries)) {
-        if (!/^\d+$/.test(id) || typeof label !== 'string' || !eventFromLabel(label)) throw new Error();
+        if (!/^\d+$/.test(id) || typeof label !== 'string' || !eventFromLabel(label, SURVEY_LANGUAGES[sid])) throw new Error();
       }
     }
     return labels;
@@ -76,8 +76,8 @@ async function registrationsWithLabels(sessionKey, sid, archived) {
     const language = field(row, 'startlanguage').toLowerCase();
     const pl = labelsByLanguage.pl.get(id);
     const en = labelsByLanguage.en.get(id);
-    const plTerm = eventFromLabel(pl);
-    const sameTerm = plTerm && plTerm === eventFromLabel(en);
+    const plTerm = eventFromLabel(pl, SURVEY_LANGUAGES[sid]);
+    const sameTerm = plTerm && plTerm === eventFromLabel(en, SURVEY_LANGUAGES[sid]);
     const liveLabel = labelsByLanguage[language]?.get(id) ?? (sameTerm ? pl : '');
     const archivedLabel = Object.hasOwn(archived, id) ? archived[id] : null;
     return { ...row, CONFIRM: archivedLabel ?? confirmedHistoricalLabel(sid, row) ?? liveLabel };

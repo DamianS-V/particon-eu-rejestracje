@@ -29,13 +29,35 @@ export const ROLE_NAMES = {
 const clean = value => value === null || value === undefined ? '' : String(value).trim();
 const normalizeKey = key => key.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-export function eventFromLabel(label) {
+// Seminar language comes from the form, not the language chosen for its UI.
+export const SURVEY_LANGUAGES = { '887516': 'PL', '798891': 'PL', '634562': 'EN', '968655': 'PL' };
+const MONTHS_PL = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+const MONTHS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+export function eventFromLabel(label, language = null) {
   const text = clean(label).replace(/<[^>]*>|&nbsp;|&#160;/gi, ' ').trim();
-  const match = /^(\d{1,2})(?:\s*\.\s*11\s*\.\s*|\s+(?:listopada|november)\s+)(\d{4})\s*,?\s*(?:godz\.?\s*)?(\d{1,2}:[0-5]\d)\b/i.exec(text);
+  const match = /^(\d{1,2})(?:\s*\.\s*(\d{1,2})\s*\.\s*|\s+([a-ząćęłńóśźż]+)\s+)(\d{4})\s*,?\s*(?:godz\.?\s*)?((?:[01]?\d|2[0-3]):[0-5]\d)\b/i.exec(text);
   if (!match) return null;
-  const [, day, year, start] = match;
-  const prefix = `${year}-11-${day.padStart(2, '0')}T${start.padStart(5, '0')}|`;
-  return EVENTS.find(event => event.key.startsWith(prefix))?.key ?? null;
+  const [, day, numericMonth, monthName, year, start] = match;
+  const name = monthName?.toLowerCase();
+  const month = numericMonth ? Number(numericMonth) : Math.max(MONTHS_PL.indexOf(name), MONTHS_EN.indexOf(name)) + 1;
+  const date = `${year}-${String(month).padStart(2, '0')}-${day.padStart(2, '0')}`;
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
+  const prefix = `${date}T${start.padStart(5, '0')}|`;
+  // Keep established seminar identities even when their labels were translated.
+  const known = EVENTS.filter(event => event.key.startsWith(prefix));
+  if (known.length === 1 && (!language || known[0].language === language)) return known[0].key;
+  if (!['PL', 'EN'].includes(language)) return null;
+  return `${prefix}${language}`;
+}
+
+function eventDetails(key) {
+  const [timestamp, language] = key.split('|');
+  const date = timestamp.slice(0, 10);
+  const month = Number(date.slice(5, 7)) - 1;
+  const monthName = language === 'EN' ? MONTHS_EN[month].replace(/^./, c => c.toUpperCase()) : MONTHS_PL[month];
+  return { key, date, language, label: `${Number(date.slice(8))} ${monthName} ${date.slice(0, 4)}, ${timestamp.slice(11)}` };
 }
 
 export function field(row, name) {
@@ -77,7 +99,7 @@ export function normalizeRegistration(sid, row) {
   if (!id || !/^\S+@\S+\.\S+$/.test(email)) throw new Error(`Ukończona odpowiedź ${sid} ma nieprawidłowe id/e-mail`);
   const submittedDay = submitted.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(submittedDay)) throw new Error(`Nieprawidłowa data odpowiedzi ${sid}`);
-  const event = eventFromLabel(field(row, 'CONFIRM'));
+  const event = eventFromLabel(field(row, 'CONFIRM'), SURVEY_LANGUAGES[sid]);
   const other = [];
   for (const channel of Object.keys(CHANNEL_NAMES)) {
     const flag = field(row, `SOURCEOTHER[${channel}]`) || field(row, `SOURCEOTHER_${channel}`);
@@ -122,7 +144,11 @@ export function aggregate(exportsBySurvey, now = new Date(), excludedResponseKey
   rows.sort((a, b) => a.submitted.localeCompare(b.submitted) || a.sid.localeCompare(b.sid) || Number(a.id) - Number(b.id));
 
   const firstByEmail = new Map();
-  const perEvent = new Map(EVENTS.map(e => [e.key, { emails: new Set(), submissions: 0 }]));
+  const eventCatalog = new Map(EVENTS.map(e => [e.key, e]));
+  for (const row of rows) {
+    if (row.event && !eventCatalog.has(row.event)) eventCatalog.set(row.event, eventDetails(row.event));
+  }
+  const perEvent = new Map([...eventCatalog.keys()].map(key => [key, { emails: new Set(), submissions: 0 }]));
   const bySubmissionDate = new Map();
   let unassignedRegistrations = 0;
   for (const row of rows) {
@@ -153,7 +179,7 @@ export function aggregate(exportsBySurvey, now = new Date(), excludedResponseKey
     const date = dateOffset(today, n - 29);
     return { date, registrations: bySubmissionDate.get(date) || 0, newUnique: firstByDay.get(date) || 0 };
   });
-  const events = EVENTS.map(e => ({
+  const events = [...eventCatalog.values()].sort((a, b) => a.key.localeCompare(b.key)).map(e => ({
     key: e.key, label: e.label, language: e.language, date: e.date,
     registered: perEvent.get(e.key).emails.size,
     submissions: perEvent.get(e.key).submissions
