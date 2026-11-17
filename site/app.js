@@ -29,6 +29,16 @@ function escapeHtml(value) {
 function renderMetrics(data) {
   const m = data.metrics;
   $('unique').textContent = format(m.uniquePersons);
+  const attendance = data.attendance;
+  $('attendance-unique').textContent = attendance ? format(attendance.uniquePersons) : '—';
+  const dateLabel = value => new Date(`${value}T12:00:00Z`).toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw' });
+  $('attendance-caption').textContent = attendance
+    ? `${format(attendance.reportCount)} raportów · ${dateLabel(attendance.periodStart)}–${dateLabel(attendance.periodEnd)}`
+    : 'Brak zestawienia obecności';
+  $('attendance-note').hidden = !attendance;
+  $('attendance-note').textContent = attendance
+    ? `Obecności: każda rozpoznana osoba liczona raz łącznie w PL i EN, w tym prowadzący i organizatorzy. Nierozstrzygnięte wpisy poza licznikiem: ${format(attendance.unresolvedEntries)}. Zestawienie z ${dateLabel(attendance.compiledOn)}; aktualizacja po dodaniu kolejnych raportów obecności.`
+    : '';
   $('total').textContent = format(m.registrations);
   $('duplicates').textContent = format(m.duplicateRegistrations);
   $('last7').textContent = format(m.last7Registrations);

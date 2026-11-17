@@ -2,6 +2,7 @@ import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { aggregate, confirmedHistoricalLabel, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS, SURVEY_LANGUAGES } from './aggregate.mjs';
 import { decodeKey, seal } from './crypto.mjs';
+import { parseAttendance } from './attendance.mjs';
 
 const ENDPOINT = 'https://particon-eu.limesurvey.net/admin/remotecontrol';
 
@@ -90,6 +91,7 @@ async function main() {
   const password = mandatory('LIMESURVEY_PASSWORD');
   const key = decodeKey(mandatory('DASHBOARD_ENCRYPTION_KEY'));
   const archive = archivedLabels();
+  const attendance = parseAttendance(process.env.ATTENDANCE_SUMMARY);
   const excludedResponseKeys = (process.env.LIMESURVEY_EXCLUDED_RESPONSES ?? '').split(',').map(entry => entry.trim()).filter(Boolean);
   if (excludedResponseKeys.some(entry => !/^\d+\|\d+$/.test(entry))) {
     throw new Error('LIMESURVEY_EXCLUDED_RESPONSES wymaga par ID formularza|ID odpowiedzi.');
@@ -107,6 +109,7 @@ async function main() {
   }
 
   const summary = aggregate(exportsBySurvey, new Date(), new Set(excludedResponseKeys));
+  summary.attendance = attendance;
   // Aggregate import audit stays inside the encrypted payload, never in job logs.
   // It contains selected term labels and counts, without respondent identifiers.
   const importedTerms = new Map();

@@ -40,11 +40,14 @@
           <div class="toolbar"><div class="updated"><span class="live-dot"></span><span id="updated">Oczekiwanie na dane</span></div><button id="copy-link" class="text-button" type="button">Kopiuj link z dostępem ↗</button></div>
 
           <div class="kpi-grid">
-            <article class="card kpi kpi-feature"><div class="kpi-label">Unikalne osoby</div><div class="kpi-number"><span id="unique">—</span><span class="kpi-of">/ 300</span></div><div class="progress-track"><div id="goal-progress" class="progress-fill"></div></div><p id="goal-description" class="kpi-caption">Postęp do celu projektu</p></article>
+            <article class="card kpi kpi-feature"><div class="kpi-label">Unikalni zarejestrowani</div><div class="kpi-number"><span id="unique">—</span><span class="kpi-of">/ 300</span></div><div class="progress-track"><div id="goal-progress" class="progress-fill"></div></div><p id="goal-description" class="kpi-caption">Postęp do celu projektu</p></article>
+            <article class="card kpi"><div class="kpi-label">Unikalni obecni · PL / EN</div><div class="kpi-number" id="attendance-unique">—</div><p id="attendance-caption" class="kpi-caption">Brak zestawienia obecności</p></article>
             <article class="card kpi"><div class="kpi-label">Wszystkie zgłoszenia</div><div class="kpi-number" id="total">—</div><p class="kpi-caption">Wszystkie ukończone formularze</p></article>
             <article class="card kpi"><div class="kpi-label">Zgłoszenia w 7 dni</div><div class="kpi-number" id="last7">—</div><p class="kpi-caption">Ostatnie siedem dni kalendarzowych</p></article>
             <article class="card kpi"><div class="kpi-label">Ponowne rejestracje</div><div class="kpi-number" id="duplicates">—</div><p class="kpi-caption">Zgłoszenia ponad liczbę unikalnych e-maili</p></article>
           </div>
+
+          <p id="attendance-note" class="footnote" hidden></p>
 
           <div class="section-top"><div><div class="eyebrow">01 / TEMPO</div><h2>Dynamika rejestracji</h2></div><div class="small-stat">Dzisiaj: <strong id="today">—</strong></div></div>
           <section class="card chart-card" aria-label="Wykres rejestracji z ostatnich 30 dni"><div class="chart-top"><div class="legend"><span><i class="swatch swatch-one"></i> Nowe osoby</span><span><i class="swatch swatch-two"></i> Zgłoszenia</span></div><span class="muted">Ostatnie 30 dni</span></div><div id="trend" class="trend" role="img" aria-label="Wykres liczby nowych osób i wszystkich zgłoszeń dziennie"></div></section>
