@@ -107,6 +107,19 @@ async function main() {
   }
 
   const summary = aggregate(exportsBySurvey, new Date(), new Set(excludedResponseKeys));
+  // Aggregate import audit stays inside the encrypted payload, never in job logs.
+  // It contains selected term labels and counts, without respondent identifiers.
+  const importedTerms = new Map();
+  for (const sid of SURVEY_IDS) {
+    for (const row of parseLimeSurveyJson(exportsBySurvey[sid], sid)) {
+      if (!field(row, 'submitdate') || excludedResponseKeys.includes(`${sid}|${field(row, 'id')}`)) continue;
+      const label = field(row, 'CONFIRM');
+      const key = JSON.stringify([sid, label]);
+      if (!importedTerms.has(key)) importedTerms.set(key, { survey: sid, label, submissions: 0 });
+      importedTerms.get(key).submissions++;
+    }
+  }
+  summary.importedTerms = [...importedTerms.values()];
   const envelope = seal(summary, key);
   await mkdir('dist', { recursive: true });
   for (const filename of ['index.html', 'styles.css', 'app.js']) {
