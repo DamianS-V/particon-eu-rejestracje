@@ -3,9 +3,9 @@ import { field, parseLimeSurveyJson } from './aggregate.mjs';
 export const SURVEY_ID = '846945';
 
 const screeningFields = {
-  SCREENOUT: '298X2898',
-  AGEOUT: '298X3105',
-  COUNTRYOUT: '298X3106'
+  SCREENOUT: 'Q2898',
+  AGEOUT: 'Q3105',
+  COUNTRYOUT: 'Q3106'
 };
 
 const capitalRegions = new Set(['PL91', 'CZ01', 'SK01', 'HU11', 'ITI4', 'FR10']);
@@ -18,18 +18,18 @@ const nuts2Codes = [
   'FR10 FRB0 FRC1 FRC2 FRD1 FRD2 FRE1 FRE2 FRF1 FRF2 FRF3 FRG0 FRH0 FRI1 FRI2 FRI3 FRJ1 FRJ2 FRK1 FRK2 FRL0 FRM0 FRY1 FRY2 FRY3 FRY4 FRY5'
 ].flatMap(codes => codes.split(' '));
 
-// Question codes and database column suffixes from the survey 846945 structure.
+// LimeSurvey exports selected fields by QID and returns the question codes as headers.
 const dimensions = [
   {
     label: 'Kraj zamieszkania',
     code: 'RESCOUNTRY',
-    column: '298X2897',
+    column: 'Q2897',
     categories: { PL: 'Polska', CZ: 'Czechy', SK: 'Słowacja', HU: 'Węgry', IT: 'Włochy', FR: 'Francja', OTHER: 'Inny kraj' }
   },
   {
     label: 'Wielkość miejscowości',
     code: 'SETTLEMENT',
-    column: '299X2909',
+    column: 'Q2909',
     categories: {
       P1K: 'Poniżej 5 tys. mieszkańców',
       P1K5K: 'Poniżej 5 tys. mieszkańców',
@@ -46,7 +46,7 @@ const dimensions = [
     label: 'Region zamieszkania',
     note: 'Podział na region NUTS 2, w którym leży stolica danego kraju, i pozostałe regiony.',
     code: 'NUTS2',
-    column: '299X2908',
+    column: 'Q2908',
     categories: Object.fromEntries(nuts2Codes.map(code => [
       code, capitalRegions.has(code) ? 'Region obejmujący stolicę kraju' : 'Pozostałe regiony'
     ]))
@@ -54,19 +54,19 @@ const dimensions = [
   {
     label: 'Grupa wieku',
     code: 'AGEGROUP',
-    column: '298X2899',
+    column: 'Q2899',
     categories: { 1: '18–24', 2: '25–34', 3: '35–44', 4: '45–54', 5: '55–64', 6: '65–74', 7: '75+' }
   },
   {
     label: 'Płeć',
     code: 'GENDER',
-    column: '300X2910',
+    column: 'Q2910',
     categories: { F: 'Kobieta', M: 'Mężczyzna', O: 'Osoba niebinarna', A001: 'Inna tożsamość płciowa' }
   },
   {
     label: 'Główna sytuacja zawodowa',
     code: 'EMPLOYMENT',
-    column: '300X2911',
+    column: 'Q2911',
     categories: {
       EMP: 'Praca najemna',
       SELF: 'Praca na własny rachunek',
@@ -83,15 +83,16 @@ const dimensions = [
 export const SURVEY_EXPORT_FIELDS = [
   'id',
   'submitdate',
-  ...[...Object.values(screeningFields), ...dimensions.map(dimension => dimension.column)]
-    .map(column => `${SURVEY_ID}X${column}`)
+  ...Object.values(screeningFields),
+  ...dimensions.map(dimension => dimension.column)
 ];
 
 export function aggregateSurvey(payload, now = new Date()) {
   const rows = parseLimeSurveyJson(payload, SURVEY_ID);
   const expectedHeadings = ['submitdate', ...Object.keys(screeningFields), ...dimensions.map(dimension => dimension.code)];
-  if (rows.length && expectedHeadings.some(code => !rows.some(row => Object.hasOwn(row, code)))) {
-    throw new Error('Eksport ankiety 846945 nie zawiera wszystkich wymaganych kolumn.');
+  const missingHeadings = expectedHeadings.filter(code => !rows.some(row => Object.hasOwn(row, code)));
+  if (rows.length && missingHeadings.length) {
+    throw new Error(`Eksport ankiety 846945 nie zawiera wszystkich wymaganych kolumn (${missingHeadings.join(', ')}).`);
   }
   const completed = [];
   let incomplete = 0;

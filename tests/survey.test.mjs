@@ -43,6 +43,7 @@ test('stosuje kryteria kwalifikacji i wspólne kategorie metryczki ankiety', () 
 test('pusty eksport ma zerowe liczniki, a eksport bez kolumn sygnalizuje błąd', () => {
   assert.equal(aggregateSurvey({ responses: [] }).completed, 0);
   assert.throws(() => aggregateSurvey({ responses: [{ id: 1, submitdate: '' }] }), /wymaganych kolumn/);
-  assert.deepEqual(SURVEY_EXPORT_FIELDS.slice(0, 2), ['id', 'submitdate']);
-  assert.equal(new Set(SURVEY_EXPORT_FIELDS).size, 11);
+  assert.deepEqual(SURVEY_EXPORT_FIELDS, [
+    'id', 'submitdate', 'Q2898', 'Q3105', 'Q3106', 'Q2897', 'Q2909', 'Q2908', 'Q2899', 'Q2910', 'Q2911'
+  ]);
 });
