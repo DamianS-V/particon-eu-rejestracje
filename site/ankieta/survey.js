@@ -113,6 +113,83 @@ function renderComparison() {
   $('comparison-values').replaceChildren(table);
 }
 
+function renderImportance(groups) {
+  const available = groups?.length && groups.every(group => Array.isArray(group.bins));
+  $('importance-panel').hidden = !available;
+  if (!available) return;
+  $('importance-details').hidden = !groups.some(group => group.count);
+
+  const colors = ['#168777', '#405b83'];
+  const legend = element('ul', 'histogram-legend');
+  groups.forEach(({ label, count }, index) => {
+    const item = element('li', 'comparison-key');
+    const swatch = element('span', 'comparison-swatch');
+    swatch.style.backgroundColor = colors[index];
+    item.append(swatch, document.createTextNode(`${label} · n = ${numbers.format(count)}`));
+    legend.append(item);
+  });
+  if (!groups.some(group => group.count)) {
+    $('importance').replaceChildren(legend, element('p', 'section-note', 'Brak odpowiedzi na oba pytania.'));
+    return;
+  }
+
+  const share = (group, index) => group.count ? group.bins[index] / group.count : 0;
+  const maxShare = Math.max(...groups.flatMap(group => group.bins.map((_, index) => share(group, index))));
+  const tickStep = Math.max(1, Math.ceil(maxShare * 5)) / 20;
+  const limit = tickStep * 4;
+  const figure = element('figure', 'histogram');
+  figure.setAttribute('aria-label', 'Histogram ocen znaczenia konstytucji. Dokładne wartości zawiera tabela poniżej.');
+  const plot = element('div', 'histogram-plot');
+  plot.setAttribute('aria-hidden', 'true');
+  for (let index = 0; index <= 4; index++) {
+    const tick = element('div', 'histogram-tick');
+    tick.style.bottom = `${index * 25}%`;
+    tick.append(element('span', '', percent.format(index * tickStep)));
+    plot.append(tick);
+  }
+
+  const table = element('table', '');
+  const header = table.createTHead().insertRow();
+  for (const label of ['Ocena', ...groups.map(group => group.label)]) {
+    const cell = element('th', '', label);
+    cell.scope = 'col';
+    header.append(cell);
+  }
+  const body = table.createTBody();
+  const bins = groups[0].bins;
+  bins.forEach((_, index) => {
+    const bin = element('div', 'histogram-bin');
+    const lower = index * 10;
+    const upper = lower + 10;
+    const range = `${lower}–${upper === 100 ? '' : '<'}${upper}`;
+    const row = body.insertRow();
+    const heading = element('th', '', range);
+    heading.scope = 'row';
+    row.append(heading);
+    groups.forEach((group, series) => {
+      const value = `${numbers.format(group.bins[index])} · ${percent.format(share(group, index))}`;
+      const bar = element('div', 'histogram-bar');
+      bar.style.height = `${100 * share(group, index) / limit}%`;
+      bar.style.backgroundColor = colors[series];
+      bar.title = `${range} · ${group.label} · ${value}`;
+      bin.append(bar);
+      row.append(element('td', '', group.count ? value : '—'));
+    });
+    plot.append(bin);
+  });
+
+  const axis = element('div', 'histogram-axis');
+  axis.setAttribute('aria-hidden', 'true');
+  for (let score = 0; score <= 100; score += 10) {
+    const tick = element('span', '', String(score));
+    tick.style.left = `${score}%`;
+    axis.append(tick);
+  }
+  figure.append(plot, axis, element('figcaption', 'histogram-caption', 'Ocena znaczenia konstytucji'));
+  $('importance').replaceChildren(legend, figure);
+  $('importance-table').replaceChildren(table);
+}
+
 function renderProfile(data) {
   comparison = data.comparison;
   for (const id of ['comparison-heading', 'comparison-panel', 'background-panel', 'importance-panel']) {
@@ -140,15 +217,7 @@ function renderProfile(data) {
     cards[target].push(renderDimension(dimension, data.completed));
   }
   for (const [id, nodes] of Object.entries(cards)) $(id).replaceChildren(...nodes);
-  $('importance').replaceChildren(...data.importance.map(({ label, count, median }) => {
-    const card = element('article', 'card bars-card importance-result');
-    card.append(
-      element('h3', 'survey-dimension-title', label),
-      element('strong', 'importance-value', median === null ? '—' : numbers.format(median)),
-      element('p', 'section-note', `n = ${numbers.format(count)}`)
-    );
-    return card;
-  }));
+  renderImportance(data.importance);
 }
 
 let request = 0;

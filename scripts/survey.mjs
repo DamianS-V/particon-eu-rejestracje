@@ -213,19 +213,18 @@ function compareCountries(completed) {
 }
 
 function constitutionImportance(completed) {
-  const scores = { yes: [], no: [] };
+  const groups = Object.fromEntries(Object.entries(legalGroups).map(([key, label]) => [
+    key, { label, count: 0, bins: Array(10).fill(0) }
+  ]));
   for (const row of completed) {
-    const group = legalBackground(row);
+    const group = groups[legalBackground(row)];
     const rawScore = field(row, 'CONSTIMPORT100');
-    if (!group || !/^\d+(?:\.\d+)?$/.test(rawScore) || Number(rawScore) > 100) continue;
-    scores[group].push(Number(rawScore));
+    const score = Number(rawScore);
+    if (!group || !/^\d+(?:\.\d+)?$/.test(rawScore) || score > 100) continue;
+    group.bins[Math.min(9, Math.floor(score / 10))]++;
+    group.count++;
   }
-  return Object.entries(scores).map(([group, values]) => {
-    values.sort((a, b) => a - b);
-    const middle = (values.length - 1) / 2;
-    const median = values.length ? (values[Math.floor(middle)] + values[Math.ceil(middle)]) / 2 : null;
-    return { label: legalGroups[group], count: values.length, median };
-  });
+  return Object.values(groups);
 }
 
 export function aggregateSurvey(payload, now = new Date()) {

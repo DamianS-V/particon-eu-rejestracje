@@ -44,7 +44,7 @@ test('stosuje kryteria kwalifikacji i wspólne kategorie metryczki ankiety', () 
   assert.ok(!JSON.stringify(summary).includes('wpis lokalny'));
 });
 
-test('liczy udziały dla kraju, zachowuje braki i liczy medianę po deduplikacji wskazań', () => {
+test('liczy udziały dla kraju i rozkład ocen po deduplikacji wskazań', () => {
   const summary = aggregateSurvey({ responses: [
     { id: 1, ...response },
     { id: 2, ...response, INCOMESUBJ: '4', ISCEDSTATUS: 'REVIEW', ISCEDLEVEL: '7', CONSTIMPORT100: '100' },
@@ -65,9 +65,20 @@ test('liczy udziały dla kraju, zachowuje braki i liczy medianę po deduplikacji
   assert.deepEqual(czechia.distributions.EDUCATION.groups, [{ label: 'Do niższego średniego (ISCED 0–2)', count: 1 }]);
   assert.equal(slovakia.total, 0);
   assert.equal(summary.comparison.unassigned, 1);
-  assert.deepEqual(summary.importance.map(({ count, median }) => ({ count, median })), [
-    { count: 2, median: 90 }, { count: 1, median: 0 }
+  assert.deepEqual(summary.importance.map(({ count, bins }) => ({ count, bins })), [
+    { count: 2, bins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 1] },
+    { count: 1, bins: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
   ]);
+});
+
+test('histogram stosuje wspólne granice i uwzględnia oba końce skali', () => {
+  const scores = ['0', '9.99', '10', '89.99', '90', '100', '-1', '100.01', '', 'nie wiem'];
+  const summary = aggregateSurvey({ responses: scores.map((score, id) => ({
+    id, ...response, CONSTIMPORT100: score
+  })) });
+  assert.equal(summary.importance[0].count, 6);
+  assert.deepEqual(summary.importance[0].bins, [2, 1, 0, 0, 0, 0, 0, 0, 1, 2]);
+  assert.equal(summary.importance[1].count, 0);
 });
 
 test('pusty eksport ma zerowe liczniki, a eksport bez kolumn sygnalizuje błąd', () => {
