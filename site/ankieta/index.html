@@ -37,9 +37,37 @@
             <article class="card kpi"><div class="kpi-label">Rozpoczęte i nieukończone</div><div class="kpi-number" id="incomplete"></div><p class="kpi-caption">Formularze bez końcowego przesłania, także porzucone</p></article>
             <article class="card kpi"><div class="kpi-label">Niezakwalifikowane</div><div class="kpi-number" id="screened-out"></div><p class="kpi-caption">Formularze zakończone na kryterium wieku lub kraju zamieszkania</p></article>
           </div>
-          <div class="section-top"><h2>Metryczka</h2></div>
-          <p class="section-note">Przekroje obejmują ukończone formularze. Udziały liczymy względem wszystkich ukończonych formularzy.</p>
+          <div class="section-top" id="comparison-heading"><h2 id="comparison-title">Porównanie krajów</h2></div>
+          <section class="card bars-card" id="comparison-panel" aria-labelledby="comparison-title">
+            <div class="comparison-header">
+              <p class="section-note">Udziały wśród ukończonych ankiet w każdym kraju.</p>
+              <label class="select-label" for="comparison-metric">Cecha <select id="comparison-metric"></select></label>
+            </div>
+            <p id="comparison-note" class="section-note" hidden></p>
+            <div id="comparison-legend" class="comparison-legend" aria-hidden="true"></div>
+            <div id="comparison-chart"></div>
+            <p id="comparison-unassigned" class="section-note comparison-unassigned" hidden></p>
+            <details class="comparison-details">
+              <summary>Pokaż liczby i odsetki</summary>
+              <div id="comparison-values" class="comparison-table" role="region" aria-label="Tabela porównania krajów" tabindex="0"></div>
+            </details>
+          </section>
+          <div class="section-top"><h2>Metryczka całej próby</h2></div>
+          <p class="section-note">Udziały liczone względem wszystkich ukończonych ankiet.</p>
           <div id="demographics" class="survey-grid"></div>
+          <details class="card survey-details">
+            <summary>Podstawowa struktura próby</summary>
+            <div id="demographics-more" class="survey-grid"></div>
+          </details>
+          <details class="card survey-details" id="background-panel">
+            <summary>Wykształcenie i kraj urodzenia</summary>
+            <div id="demographics-background" class="survey-grid"></div>
+          </details>
+          <details class="card survey-details" id="importance-panel">
+            <summary>Znaczenie konstytucji a związek z prawem</summary>
+            <p class="section-note">Mediana odpowiedzi na pytanie o znaczenie konstytucji w skali 0–100. Liczebność obejmuje osoby, które odpowiedziały na oba pytania.</p>
+            <div id="importance" class="survey-grid"></div>
+          </details>
         </section>
       </main>
       <footer><span>PARTICON-EU / Social Embeddedness of Constitutions</span><span>Wewnętrzny monitoring ankiety</span></footer>

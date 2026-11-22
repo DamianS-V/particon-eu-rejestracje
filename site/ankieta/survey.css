@@ -32,8 +32,144 @@
   font-size: .9rem;
 }
 
+.comparison-header, .comparison-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.comparison-header {
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.comparison-header .section-note {
+  margin: 0;
+}
+
+.comparison-header .select-label, .comparison-header select {
+  font-size: .9rem;
+}
+
+.comparison-header select {
+  max-width: min(18rem, 64vw);
+}
+
+.comparison-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.comparison-key {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .875rem;
+}
+
+.comparison-swatch {
+  flex: 0 0 .8rem;
+  width: .8rem;
+  height: .8rem;
+  border-radius: .2rem;
+}
+
+.comparison-row {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  align-items: center;
+  gap: .75rem;
+  padding: .45rem 0;
+}
+
+.comparison-caption span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comparison-track {
+  display: flex;
+  height: 1rem;
+  overflow: hidden;
+  border-radius: .35rem;
+  background: #eef4f2;
+}
+
+.comparison-unassigned {
+  margin: 1rem 0 0;
+}
+
+.comparison-details {
+  padding-top: .85rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.comparison-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: .75rem;
+}
+
+.comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+}
+
+.comparison-table th, .comparison-table td {
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.comparison-table td {
+  white-space: nowrap;
+}
+
+.survey-details {
+  margin-top: 1rem;
+  padding: 1.1rem 1.5rem;
+}
+
+#dashboard summary {
+  cursor: pointer;
+  color: #125f58;
+  font-weight: 700;
+}
+
+#dashboard summary:focus-visible, .comparison-table:focus-visible {
+  outline: 3px solid #95d9cf;
+  outline-offset: 3px;
+}
+
+.survey-details[open] > summary {
+  margin-bottom: 1rem;
+}
+
+.survey-details .bars-card {
+  box-shadow: none;
+}
+
+.importance-value {
+  font-size: 1.75rem;
+}
+
+.importance-result .section-note {
+  margin: .25rem 0 0;
+}
+
 @media (max-width: 640px) {
   .survey-grid, .survey-grid:has(> .kpi) {
     grid-template-columns: 1fr;
+  }
+
+  .comparison-row {
+    grid-template-columns: 1fr;
+    gap: .35rem;
   }
 }

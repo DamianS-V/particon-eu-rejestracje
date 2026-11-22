@@ -4,6 +4,10 @@ const $ = id => document.getElementById(id);
 const numbers = new Intl.NumberFormat('pl-PL');
 const percent = new Intl.NumberFormat('pl-PL', { style: 'percent', maximumFractionDigits: 1 });
 const date = new Intl.DateTimeFormat('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'medium', timeStyle: 'short' });
+const unknownLabel = 'Poza kategoriami';
+const missingLabel = 'Brak odpowiedzi';
+const comparisonColors = ['#184b58', '#297c79', '#43a995', '#8cbd8c', '#c7d77e', '#ac8154', '#7b6b9d'];
+let comparison;
 
 function element(tag, className, text = '') {
   const node = document.createElement(tag);
@@ -12,15 +16,19 @@ function element(tag, className, text = '') {
   return node;
 }
 
+function distributionRows(dimension) {
+  return [
+    ...dimension.groups,
+    { label: unknownLabel, count: dimension.unmapped },
+    { label: missingLabel, count: dimension.missing }
+  ].filter(row => row.count > 0);
+}
+
 function renderDimension(dimension, completed) {
   const card = element('article', 'card bars-card');
   card.append(element('h3', 'survey-dimension-title', dimension.label));
   if (dimension.note) card.append(element('p', 'section-note', dimension.note));
-  const rows = [
-    ...dimension.groups,
-    { label: 'Poza przypisanymi kategoriami', count: dimension.unmapped },
-    { label: 'Brak odpowiedzi', count: dimension.missing }
-  ].filter(row => row.count > 0);
+  const rows = distributionRows(dimension);
   if (!rows.length) card.append(element('p', 'section-note', 'Brak ukończonych formularzy.'));
   for (const { label, count } of rows) {
     const fraction = count / completed;
@@ -38,6 +46,111 @@ function renderDimension(dimension, completed) {
   return card;
 }
 
+function renderComparison() {
+  const metric = comparison.metrics.find(({ code }) => code === $('comparison-metric').value);
+  const countries = comparison.countries.map(({ label, total, distributions }) => ({
+    label, total, counts: new Map(distributionRows(distributions[metric.code]).map(row => [row.label, row.count]))
+  }));
+  const labels = [...metric.categories, unknownLabel, missingLabel]
+    .filter(label => countries.some(({ counts }) => counts.has(label)));
+  const color = label => {
+    if (label === unknownLabel) return '#7a8990';
+    if (label === missingLabel) return '#d7e1e1';
+    return comparisonColors[metric.categories.indexOf(label)];
+  };
+  $('comparison-note').hidden = !metric.note;
+  $('comparison-note').textContent = metric.note ?? '';
+  $('comparison-unassigned').hidden = !comparison.unassigned;
+  $('comparison-unassigned').textContent = `Poza zestawieniem krajów · ${numbers.format(comparison.unassigned)} ukończonych ankiet z innym lub nieustalonym krajem zamieszkania`;
+  $('comparison-legend').replaceChildren(...labels.map(label => {
+    const item = element('span', 'comparison-key');
+    const swatch = element('span', 'comparison-swatch');
+    swatch.style.backgroundColor = color(label);
+    item.append(swatch, document.createTextNode(label));
+    return item;
+  }));
+  $('comparison-chart').replaceChildren(...countries.map(({ label, total, counts }) => {
+    const row = element('div', 'comparison-row');
+    const caption = element('div', 'comparison-caption');
+    caption.append(element('strong', '', label), element('span', '', `n = ${numbers.format(total)}`));
+    const track = element('div', 'comparison-track');
+    track.setAttribute('role', 'img');
+    const values = [];
+    for (const category of labels) {
+      const count = counts.get(category);
+      if (!count) continue;
+      const value = `${category} · ${numbers.format(count)} (${percent.format(count / total)})`;
+      const segment = element('span', 'comparison-segment');
+      segment.style.backgroundColor = color(category);
+      segment.style.width = `${100 * count / total}%`;
+      segment.title = value;
+      values.push(value);
+      track.append(segment);
+    }
+    track.setAttribute('aria-label', values.join(', ') || 'Brak ukończonych ankiet');
+    row.append(caption, track);
+    return row;
+  }));
+
+  const table = element('table', '');
+  const header = table.createTHead().insertRow();
+  for (const label of ['Kraj', 'Ukończone', ...labels]) {
+    const cell = element('th', '', label);
+    cell.scope = 'col';
+    header.append(cell);
+  }
+  const body = table.createTBody();
+  for (const { label, total, counts } of countries) {
+    const row = body.insertRow();
+    const country = element('th', '', label);
+    country.scope = 'row';
+    row.append(country, element('td', '', numbers.format(total)));
+    for (const category of labels) {
+      const count = counts.get(category) ?? 0;
+      row.append(element('td', '', total ? `${numbers.format(count)} · ${percent.format(count / total)}` : '—'));
+    }
+  }
+  $('comparison-values').replaceChildren(table);
+}
+
+function renderProfile(data) {
+  comparison = data.comparison;
+  for (const id of ['comparison-heading', 'comparison-panel', 'background-panel', 'importance-panel']) {
+    $(id).hidden = !comparison;
+  }
+  if (!comparison) {
+    $('demographics').replaceChildren(...data.demographics.map(d => renderDimension(d, data.completed)));
+    $('demographics-more').parentElement.hidden = true;
+    return;
+  }
+  $('demographics-more').parentElement.hidden = false;
+  const select = $('comparison-metric');
+  const selected = select.value;
+  select.replaceChildren(...comparison.metrics.map(({ code, label }) => new Option(label, code)));
+  if (comparison.metrics.some(({ code }) => code === selected)) select.value = selected;
+  renderComparison();
+
+  const featured = ['INCOMESUBJ', 'LAWBACKGROUND'];
+  const background = ['EDUCATION', 'BIRTHCOUNTRY', 'PARENTSABROAD'];
+  const cards = { demographics: [], 'demographics-background': [], 'demographics-more': [] };
+  for (const dimension of data.demographics) {
+    let target = 'demographics-more';
+    if (featured.includes(dimension.code)) target = 'demographics';
+    if (background.includes(dimension.code)) target = 'demographics-background';
+    cards[target].push(renderDimension(dimension, data.completed));
+  }
+  for (const [id, nodes] of Object.entries(cards)) $(id).replaceChildren(...nodes);
+  $('importance').replaceChildren(...data.importance.map(({ label, count, median }) => {
+    const card = element('article', 'card bars-card importance-result');
+    card.append(
+      element('h3', 'survey-dimension-title', label),
+      element('strong', 'importance-value', median === null ? '—' : numbers.format(median)),
+      element('p', 'section-note', `n = ${numbers.format(count)}`)
+    );
+    return card;
+  }));
+}
+
 let request = 0;
 async function load() {
   const currentRequest = ++request;
@@ -53,7 +166,7 @@ async function load() {
         $('completed').textContent = numbers.format(data.completed);
         $('incomplete').textContent = numbers.format(data.incomplete);
         $('screened-out').textContent = numbers.format(data.screenedOut);
-        $('demographics').replaceChildren(...data.demographics.map(d => renderDimension(d, data.completed)));
+        renderProfile(data);
       }
     }
     $('locked-message').textContent = '';
@@ -85,6 +198,7 @@ $('copy-link').addEventListener('click', async () => {
     $('copy-link').textContent = 'Skopiuj adres z paska przeglądarki';
   }
 });
+$('comparison-metric').addEventListener('change', renderComparison);
 window.addEventListener('hashchange', load);
 load();
 setInterval(load, 120_000);

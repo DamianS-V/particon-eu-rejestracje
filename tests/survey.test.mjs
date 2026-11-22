@@ -6,7 +6,11 @@ const response = {
   submitdate: '2026-11-21 10:00:00',
   SCREENOUT: '0', AGEOUT: '0', COUNTRYOUT: '0',
   RESCOUNTRY: 'PL', SETTLEMENT: 'P1K', NUTS2: 'PL91',
-  AGEGROUP: 1, GENDER: 'F', EMPLOYMENT: 'EMP'
+  AGEGROUP: 1, GENDER: 'F', EMPLOYMENT: 'EMP',
+  INCOMESUBJ: '3', BIRTHCOUNTRY: '1', PARENTSABROAD: '1',
+  'LAWBACKGROUND[EDU]': 'Y', 'LAWBACKGROUND[PROF]': 'Y',
+  'LAWBACKGROUND[APPL]': 'N', 'LAWBACKGROUND[NONE]': 'N',
+  ISCEDSTATUS: 'PROVISIONAL', ISCEDLEVEL: '7', CONSTIMPORT100: '80'
 };
 
 test('stosuje kryteria kwalifikacji i wspólne kategorie metryczki ankiety', () => {
@@ -40,10 +44,37 @@ test('stosuje kryteria kwalifikacji i wspólne kategorie metryczki ankiety', () 
   assert.ok(!JSON.stringify(summary).includes('wpis lokalny'));
 });
 
+test('liczy udziały dla kraju, zachowuje braki i liczy medianę po deduplikacji wskazań', () => {
+  const summary = aggregateSurvey({ responses: [
+    { id: 1, ...response },
+    { id: 2, ...response, INCOMESUBJ: '4', ISCEDSTATUS: 'REVIEW', ISCEDLEVEL: '7', CONSTIMPORT100: '100' },
+    {
+      id: 3, ...response, RESCOUNTRY: 'CZ', AGEGROUP: null, ISCEDSTATUS: 'NOSCHOOL',
+      'LAWBACKGROUND[EDU]': 'N', 'LAWBACKGROUND[PROF]': 'N', 'LAWBACKGROUND[NONE]': 'Y', CONSTIMPORT100: '0'
+    },
+    { id: 4, ...response, RESCOUNTRY: '', CONSTIMPORT100: '101' },
+    { id: 5, ...response, submitdate: '', CONSTIMPORT100: '10' }
+  ] });
+  const [poland, czechia, slovakia] = summary.comparison.countries;
+  assert.equal(poland.total, 2);
+  assert.deepEqual(poland.distributions.INCOMESUBJ.groups, [{ label: 'Radzimy sobie z trudem', count: 2 }]);
+  assert.deepEqual(poland.distributions.EDUCATION.groups, [
+    { label: 'Wyższe (5–8)', count: 1 }, { label: 'Wymaga weryfikacji', count: 1 }
+  ]);
+  assert.equal(czechia.distributions.AGEGROUP.missing, 1);
+  assert.deepEqual(czechia.distributions.EDUCATION.groups, [{ label: 'Do niższego średniego (ISCED 0–2)', count: 1 }]);
+  assert.equal(slovakia.total, 0);
+  assert.equal(summary.comparison.unassigned, 1);
+  assert.deepEqual(summary.importance.map(({ count, median }) => ({ count, median })), [
+    { count: 2, median: 90 }, { count: 1, median: 0 }
+  ]);
+});
+
 test('pusty eksport ma zerowe liczniki, a eksport bez kolumn sygnalizuje błąd', () => {
   assert.equal(aggregateSurvey({ responses: [] }).completed, 0);
   assert.throws(() => aggregateSurvey({ responses: [{ id: 1, submitdate: '' }] }), /wymaganych kolumn/);
   assert.deepEqual(SURVEY_EXPORT_FIELDS, [
-    'id', 'submitdate', 'Q2898', 'Q3105', 'Q3106', 'Q2897', 'Q2909', 'Q2908', 'Q2899', 'Q2910', 'Q2911'
+    'id', 'submitdate', 'Q2898', 'Q3105', 'Q3106', 'Q2897', 'Q2909', 'Q2908', 'Q2899', 'Q2910', 'Q2911',
+    'Q2913', 'Q2915', 'Q2916', 'Q2918_S3137', 'Q2918_S3138', 'Q2918_S3139', 'Q2918_S3140', 'Q3126', 'Q3128', 'Q3113'
   ]);
 });

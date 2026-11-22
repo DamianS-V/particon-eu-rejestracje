@@ -8,6 +8,32 @@ const screeningFields = {
   COUNTRYOUT: 'Q3106'
 };
 
+const countries = { PL: 'Polska', CZ: 'Czechy', SK: 'Słowacja', HU: 'Węgry', IT: 'Włochy', FR: 'Francja' };
+const legalFields = {
+  'LAWBACKGROUND[EDU]': 'Q2918_S3137',
+  'LAWBACKGROUND[PROF]': 'Q2918_S3138',
+  'LAWBACKGROUND[APPL]': 'Q2918_S3139',
+  'LAWBACKGROUND[NONE]': 'Q2918_S3140'
+};
+const legalGroups = { yes: 'Z doświadczeniem lub wykształceniem', no: 'Bez wskazanego doświadczenia' };
+
+function legalBackground(row) {
+  const [education, profession, applied, none] = Object.keys(legalFields).map(code => field(row, code));
+  if ([education, profession, applied].includes('Y')) return 'yes';
+  return none === 'Y' ? 'no' : '';
+}
+
+function educationLevel(row) {
+  const status = field(row, 'ISCEDSTATUS');
+  const level = field(row, 'ISCEDLEVEL');
+  if (status === 'REVIEW') return 'review';
+  if (status === 'UNKNOWN') return 'unknown';
+  if (status === 'NOSCHOOL') return 'basic';
+  if (status !== 'PROVISIONAL' || !/^[0-8]$/.test(level)) return '';
+  if (Number(level) <= 2) return 'basic';
+  return Number(level) <= 4 ? 'secondary' : 'tertiary';
+}
+
 const capitalRegions = new Set(['PL91', 'CZ01', 'SK01', 'HU11', 'ITI4', 'FR10']);
 const nuts2Codes = [
   'PL91 PL92 PL21 PL22 PL41 PL42 PL43 PL51 PL52 PL61 PL62 PL63 PL71 PL72 PL81 PL82 PL84',
@@ -24,7 +50,7 @@ const dimensions = [
     label: 'Kraj zamieszkania',
     code: 'RESCOUNTRY',
     column: 'Q2897',
-    categories: { PL: 'Polska', CZ: 'Czechy', SK: 'Słowacja', HU: 'Węgry', IT: 'Włochy', FR: 'Francja', OTHER: 'Inny kraj' }
+    categories: { ...countries, OTHER: 'Inny kraj' }
   },
   {
     label: 'Wielkość miejscowości',
@@ -77,20 +103,136 @@ const dimensions = [
       INACT: 'Brak pracy z innych powodów',
       OTH: 'Inna sytuacja'
     }
+  },
+  {
+    label: 'Sytuacja materialna gospodarstwa',
+    code: 'INCOMESUBJ',
+    column: 'Q2913',
+    categories: {
+      1: 'Żyjemy wygodnie',
+      2: 'Radzimy sobie',
+      3: 'Radzimy sobie z trudem',
+      4: 'Radzimy sobie z trudem',
+      A005: 'Trudno powiedzieć',
+      A006: 'Wolę nie odpowiadać'
+    }
+  },
+  {
+    label: 'Związek z prawem',
+    note: 'Obejmuje studia prawnicze, pracę w zawodzie prawniczym lub częste stosowanie prawa w pracy. Każda osoba jest liczona raz.',
+    code: 'LAWBACKGROUND',
+    read: legalBackground,
+    categories: legalGroups
+  },
+  {
+    label: 'Wykształcenie',
+    note: 'Poziomy ISCED przypisane wstępnie na podstawie odpowiedzi z krajowych systemów edukacji.',
+    code: 'EDUCATION',
+    read: educationLevel,
+    categories: {
+      basic: 'Do niższego średniego (ISCED 0–2)',
+      secondary: 'Średnie lub policealne (3–4)',
+      tertiary: 'Wyższe (5–8)',
+      review: 'Wymaga weryfikacji',
+      unknown: 'Trudno powiedzieć'
+    }
+  },
+  {
+    label: 'Kraj urodzenia',
+    code: 'BIRTHCOUNTRY',
+    column: 'Q2915',
+    categories: { 1: 'Kraj zamieszkania', 2: 'Inny kraj UE', 3: 'Kraj spoza UE' }
+  },
+  {
+    label: 'Rodzice urodzeni poza krajem zamieszkania respondenta',
+    code: 'PARENTSABROAD',
+    column: 'Q2916',
+    categories: { 1: 'Żadne', 2: 'Jedno z rodziców', 3: 'Oboje', 9: 'Trudno powiedzieć' }
   }
 ];
+
+const additionalFields = {
+  ...legalFields,
+  ISCEDSTATUS: 'Q3126',
+  ISCEDLEVEL: 'Q3128',
+  CONSTIMPORT100: 'Q3113'
+};
+const comparisonCodes = ['AGEGROUP', 'GENDER', 'SETTLEMENT', 'INCOMESUBJ', 'EDUCATION', 'LAWBACKGROUND'];
+const comparisonDimensions = comparisonCodes.map(code => dimensions.find(dimension => dimension.code === code));
+const directDimensions = dimensions.filter(dimension => dimension.column);
 
 export const SURVEY_EXPORT_FIELDS = [
   'id',
   'submitdate',
   ...Object.values(screeningFields),
-  ...dimensions.map(dimension => dimension.column)
+  ...directDimensions.map(dimension => dimension.column),
+  ...Object.values(additionalFields)
 ];
+
+function distribution(rows, { label, note, code, categories, read = row => field(row, code) }) {
+  const counts = new Map();
+  let missing = 0;
+  let unmapped = 0;
+  for (const row of rows) {
+    const answer = read(row);
+    if (!answer) {
+      missing++;
+    } else if (Object.hasOwn(categories, answer)) {
+      const category = categories[answer];
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+    } else {
+      unmapped++;
+    }
+  }
+  const groups = [...new Set(Object.values(categories))].filter(label => counts.has(label))
+    .map(label => ({ label, count: counts.get(label) }));
+  return { code, label, note, groups, missing, unmapped };
+}
+
+function compareCountries(completed) {
+  const groups = new Map(Object.keys(countries).map(code => [code, []]));
+  let unassigned = 0;
+  for (const row of completed) {
+    const country = groups.get(field(row, 'RESCOUNTRY'));
+    if (country) country.push(row);
+    else unassigned++;
+  }
+  return {
+    metrics: comparisonDimensions.map(({ code, label, note, categories }) => ({
+      code, label, note, categories: [...new Set(Object.values(categories))]
+    })),
+    countries: Array.from(groups, ([code, rows]) => ({
+      label: countries[code],
+      total: rows.length,
+      distributions: Object.fromEntries(comparisonDimensions.map(dimension => [
+        dimension.code, distribution(rows, dimension)
+      ]))
+    })),
+    unassigned
+  };
+}
+
+function constitutionImportance(completed) {
+  const scores = { yes: [], no: [] };
+  for (const row of completed) {
+    const group = legalBackground(row);
+    const rawScore = field(row, 'CONSTIMPORT100');
+    if (!group || !/^\d+(?:\.\d+)?$/.test(rawScore) || Number(rawScore) > 100) continue;
+    scores[group].push(Number(rawScore));
+  }
+  return Object.entries(scores).map(([group, values]) => {
+    values.sort((a, b) => a - b);
+    const middle = (values.length - 1) / 2;
+    const median = values.length ? (values[Math.floor(middle)] + values[Math.ceil(middle)]) / 2 : null;
+    return { label: legalGroups[group], count: values.length, median };
+  });
+}
 
 export function aggregateSurvey(payload, now = new Date()) {
   const rows = parseLimeSurveyJson(payload, SURVEY_ID);
-  const expectedHeadings = ['submitdate', ...Object.keys(screeningFields), ...dimensions.map(dimension => dimension.code)];
-  const missingHeadings = expectedHeadings.filter(code => !rows.some(row => Object.hasOwn(row, code)));
+  const expectedHeadings = ['submitdate', ...Object.keys(screeningFields), ...directDimensions.map(dimension => dimension.code), ...Object.keys(additionalFields)];
+  const headings = new Set(rows.length ? Object.keys(rows[0]) : []);
+  const missingHeadings = expectedHeadings.filter(code => !headings.has(code));
   if (rows.length && missingHeadings.length) {
     throw new Error(`Eksport ankiety 846945 nie zawiera wszystkich wymaganych kolumn (${missingHeadings.join(', ')}).`);
   }
@@ -107,30 +249,13 @@ export function aggregateSurvey(payload, now = new Date()) {
       incomplete++;
     }
   }
-  const demographics = dimensions.map(({ label, note, code, categories }) => {
-    const counts = new Map();
-    let missing = 0;
-    let unmapped = 0;
-    for (const row of completed) {
-      const answer = field(row, code);
-      if (!answer) {
-        missing++;
-      } else if (Object.hasOwn(categories, answer)) {
-        const category = categories[answer];
-        counts.set(category, (counts.get(category) ?? 0) + 1);
-      } else {
-        unmapped++;
-      }
-    }
-    const groups = [...new Set(Object.values(categories))].filter(label => counts.has(label))
-      .map(label => ({ label, count: counts.get(label) }));
-    return { label, note, groups, missing, unmapped };
-  });
   return {
     updatedAt: now.toISOString(),
     completed: completed.length,
     incomplete,
     screenedOut,
-    demographics
+    demographics: dimensions.map(dimension => distribution(completed, dimension)),
+    comparison: compareCountries(completed),
+    importance: constitutionImportance(completed)
   };
 }
