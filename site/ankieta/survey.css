@@ -1,0 +1,39 @@
+.survey-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.survey-grid:has(> .kpi) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.survey-dimension-title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+
+.survey-bar + .survey-bar {
+  margin-top: 1rem;
+}
+
+.survey-bar-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .35rem;
+}
+
+.survey-bar-heading strong {
+  white-space: nowrap;
+}
+
+#dashboard .section-note, #unavailable, .survey-grid .kpi-caption, .survey-grid .kpi-label {
+  font-size: .9rem;
+}
+
+@media (max-width: 640px) {
+  .survey-grid, .survey-grid:has(> .kpi) {
+    grid-template-columns: 1fr;
+  }
+}

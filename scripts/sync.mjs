@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { aggregate, confirmedHistoricalLabel, eventFromLabel, field, parseLimeSurveyJson, SURVEY_IDS, SURVEY_LANGUAGES } from './aggregate.mjs';
 import { decodeKey, seal } from './crypto.mjs';
 import { parseAttendance } from './attendance.mjs';
+import { aggregateSurvey, SURVEY_EXPORT_FIELDS, SURVEY_ID } from './survey.mjs';
 
 const ENDPOINT = 'https://particon-eu.limesurvey.net/admin/remotecontrol';
 
@@ -27,8 +28,9 @@ async function rpc(method, params) {
   return json.result;
 }
 
-async function exportSurvey(sessionKey, sid, language = null) {
-  const params = [sessionKey, Number(sid), 'json', language, 'complete', 'code', language ? 'long' : 'short'];
+async function exportSurvey(sessionKey, sid, { language = null, completion = 'complete', fields } = {}) {
+  const params = [sessionKey, Number(sid), 'json', language, completion, 'code', language ? 'long' : 'short'];
+  if (fields) params.push(null, null, fields);
   const result = await rpc('export_responses', params);
   if (typeof result === 'object' && result !== null) {
     if (result.error_code === 'ERR_NO_DATA' || /^no data$/i.test(result.status || '')) {
@@ -65,7 +67,7 @@ async function registrationsWithLabels(sessionKey, sid, archived) {
   if (!records.some(row => field(row, 'submitdate'))) return { responses: records };
   const labelsByLanguage = Object.create(null);
   for (const language of ['pl', 'en']) {
-    const rows = parseLimeSurveyJson(await exportSurvey(sessionKey, sid, language), sid);
+    const rows = parseLimeSurveyJson(await exportSurvey(sessionKey, sid, { language }), sid);
     if (!rows.some(row => Object.hasOwn(row, 'CONFIRM'))) {
       throw new Error(`Eksport pełnych odpowiedzi ankiety ${sid} nie zawiera pola CONFIRM (${language}).`);
     }
@@ -101,9 +103,21 @@ async function main() {
     throw new Error('Logowanie do LimeSurvey API nie powiodło się. Sprawdź nazwę użytkownika i hasło.');
   }
   let exportsBySurvey;
+  let surveySummary;
   try {
     exportsBySurvey = {};
     for (const sid of SURVEY_IDS) exportsBySurvey[sid] = await registrationsWithLabels(sessionResult, sid, archive[sid] ?? {});
+    try {
+      surveySummary = aggregateSurvey(await exportSurvey(sessionResult, SURVEY_ID, {
+        completion: 'all',
+        fields: SURVEY_EXPORT_FIELDS
+      }));
+      console.log('Zsynchronizowano ankietę 846945.');
+    } catch (error) {
+      // Do not interrupt the registration dashboard when this survey is unavailable.
+      console.warn(`::warning::Synchronizacja ankiety 846945 nie powiodła się. ${error.message}`);
+      surveySummary = { unavailable: true };
+    }
   } finally {
     try { await rpc('release_session_key', [sessionResult]); } catch { /* best effort */ }
   }
@@ -129,6 +143,12 @@ async function main() {
     await copyFile(join('site', filename), join('dist', filename));
   }
   await writeFile(join('dist', 'data.enc.json'), `${JSON.stringify(envelope)}\n`, { mode: 0o644 });
+  await mkdir(join('dist', 'ankieta'), { recursive: true });
+  for (const filename of ['index.html', 'survey.js', 'survey.css']) {
+    await copyFile(join('site', 'ankieta', filename), join('dist', 'ankieta', filename));
+  }
+  await copyFile(join('site', 'access.js'), join('dist', 'access.js'));
+  await writeFile(join('dist', 'ankieta', 'data.enc.json'), `${JSON.stringify(seal(surveySummary, key))}\n`);
   console.log('Dashboard zaktualizowany. Dane do publikacji zostały zaszyfrowane.');
 }
 

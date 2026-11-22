@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="./survey.css" />
+    <title>PARTICON-EU · Wyniki ankiety</title>
+  </head>
+  <body>
+    <div class="topline" aria-hidden="true"></div>
+    <div class="page-shell">
+      <header class="header">
+        <div class="brand"><span class="brand-mark">P<span>·</span>EU</span><span class="brand-caption">PARTICON-EU<br /><small>MONITORING ANKIETY</small></span></div>
+        <div class="header-meta">Panel zespołu</div>
+      </header>
+      <main>
+        <section class="intro">
+          <h1>Wyniki ankiety</h1>
+          <p>Postęp zbierania odpowiedzi i podstawowe dane metryczkowe.</p>
+        </section>
+        <section id="locked" class="locked card" aria-labelledby="locked-title">
+          <h2 id="locked-title">Panel chroniony kluczem</h2>
+          <form id="key-form" class="key-form">
+            <label for="key-input">Klucz dostępu</label>
+            <div class="key-input-row"><input id="key-input" type="password" spellcheck="false" autocomplete="off" required /><button type="submit">Otwórz panel</button></div>
+          </form>
+          <p id="locked-message" class="notice" role="status"></p>
+        </section>
+        <p id="unavailable" class="section-note" role="status" hidden>Synchronizacja ankiety nie powiodła się. Wyniki pojawią się po kolejnym udanym pobraniu.</p>
+        <section id="dashboard" hidden>
+          <div class="toolbar"><span id="updated" class="updated"></span><button id="copy-link" class="text-button" type="button">Kopiuj link z dostępem</button></div>
+          <div class="survey-grid">
+            <article class="card kpi kpi-feature"><div class="kpi-label">Ukończone</div><div class="kpi-number" id="completed"></div><p class="kpi-caption">Formularze przesłane w LimeSurvey</p></article>
+            <article class="card kpi"><div class="kpi-label">Rozpoczęte i nieukończone</div><div class="kpi-number" id="incomplete"></div><p class="kpi-caption">Formularze bez końcowego przesłania, także porzucone</p></article>
+            <article class="card kpi"><div class="kpi-label">Niezakwalifikowane</div><div class="kpi-number" id="screened-out"></div><p class="kpi-caption">Formularze zakończone na kryterium wieku lub kraju zamieszkania</p></article>
+          </div>
+          <div class="section-top"><h2>Metryczka</h2></div>
+          <p class="section-note">Przekroje obejmują ukończone formularze. Udziały liczymy względem wszystkich ukończonych formularzy.</p>
+          <div id="demographics" class="survey-grid"></div>
+        </section>
+      </main>
+      <footer><span>PARTICON-EU / Social Embeddedness of Constitutions</span><span>Wewnętrzny monitoring ankiety</span></footer>
+    </div>
+    <script type="module" src="./survey.js"></script>
+  </body>
+</html>

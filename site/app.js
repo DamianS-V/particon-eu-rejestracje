@@ -1,25 +1,13 @@
 // GitHub Pages hosts only a ciphertext JSON. The URL fragment contains the key;
 // fragments are not sent to the HTTP server. No tracking / analytics.
+import { readDashboard } from './access.js';
+
 const $ = id => document.getElementById(id);
 const format = n => new Intl.NumberFormat('pl-PL').format(n);
 let current;
 
-function base64urlDecode(value) {
-  const padded = value.replace(/-/g, '+').replace(/_/g, '/');
-  const bin = atob(padded.padEnd(Math.ceil(padded.length / 4) * 4, '='));
-  return Uint8Array.from(bin, char => char.charCodeAt(0));
-}
-
 function keyFromFragment() {
   return new URLSearchParams(location.hash.slice(1)).get('k') || '';
-}
-
-async function decrypt(envelope, encodedKey) {
-  const bytes = base64urlDecode(encodedKey);
-  if (bytes.length !== 32) throw new Error('Nieprawidłowa długość klucza');
-  const key = await crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['decrypt']);
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64urlDecode(envelope.iv) }, key, base64urlDecode(envelope.ciphertext));
-  return JSON.parse(new TextDecoder().decode(plain));
 }
 
 function escapeHtml(value) {
@@ -105,9 +93,7 @@ async function load() {
   const encodedKey = keyFromFragment();
   if (!encodedKey) { $('locked').hidden = false; $('dashboard').hidden = true; return; }
   try {
-    const response = await fetch(`./data.enc.json?refresh=${Date.now()}`, { cache: 'no-store' });
-    if (!response.ok) throw new Error('Brak opublikowanych statystyk');
-    render(await decrypt(await response.json(), encodedKey));
+    render(await readDashboard(`./data.enc.json?refresh=${Date.now()}`, encodedKey));
     $('locked-message').textContent = '';
   } catch (error) {
     $('dashboard').hidden = true;
