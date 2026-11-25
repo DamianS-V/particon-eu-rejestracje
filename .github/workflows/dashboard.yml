@@ -1,25 +1,22 @@
 name: Aktualizuj dashboard PARTICON-EU
 
-on:  
+on:
   schedule:
     # UTC; four updates per hour. GitHub can delay scheduled jobs.
     - cron: '0,15,30,45 * * * *'
   workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
   group: particon-dashboard-publish
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  prepare:
+    name: Przygotuj dane i stronę
     runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: github-pages-${{ github.run_attempt }}
     steps:
       - name: Pobierz kod
         uses: actions/checkout@v7
@@ -42,14 +39,29 @@ jobs:
           LIMESURVEY_EXCLUDED_RESPONSES: ${{ secrets.LIMESURVEY_EXCLUDED_RESPONSES }}
           ATTENDANCE_SUMMARY: ${{ secrets.ATTENDANCE_SUMMARY }}
 
-      - name: Konfiguracja GitHub Pages
-        uses: actions/configure-pages@v6
-
       - name: Przygotowanie zaszyfrowanej strony
         uses: actions/upload-pages-artifact@v5
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: dist
+
+  # Pages can temporarily miss an artifact when deployment immediately follows upload in the same job.
+  publish:
+    name: Opublikuj dashboard
+    needs: prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Konfiguracja GitHub Pages
+        uses: actions/configure-pages@v6
 
       - name: Publikacja dashboardu
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: ${{ needs.prepare.outputs.artifact_name }}
